@@ -1,0 +1,40 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+# Install Node.js
+- task: NodeTool@0
+  inputs:
+    versionSpec: '18.x'
+
+# Install dependencies
+- script: npm install
+  displayName: Install Dependencies
+
+# Run tests
+- script: npm test
+  displayName: Run Tests
+
+# Archive files
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+
+# Publish artifact
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'
+
+# Deploy to Azure App Service
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'AzureConnection'
+    appName: 'sdms-app'
+    package: '$(Build.ArtifactStagingDirectory)/app.zip'
