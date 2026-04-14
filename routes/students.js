@@ -3,7 +3,7 @@ const router = express.Router();
 
 let students = [
     { id: 1, name: "Karthik" },
-    { id: 2, name: "Rahul" }
+    { id: 2, name: "Karthik Sah" }
 ];
 
 router.get('/', (req, res) => {
