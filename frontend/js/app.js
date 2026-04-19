@@ -10,6 +10,9 @@ document.body.style.visibility = 'hidden';
 if (!token || !role) {
     window.location.replace('/');
 }
+if (role === 'student') {
+    window.location.replace('/student-dashboard');
+}
 // auth.js already server-validated the role before sending user here.
 
 
@@ -77,6 +80,10 @@ async function fetchUser() {
         });
         const data = await res.json();
         if (res.ok) {
+            if (data.role === 'student') {
+                window.location.replace('/student-dashboard');
+                return;
+            }
             document.querySelector('#user-display span').textContent = data.username;
             // Server confirmed token is valid — safe to reveal the page
             document.body.style.visibility = 'visible';
@@ -115,7 +122,7 @@ async function fetchStudents(searchQuery = '') {
             populateFilterOptions();
             renderStudents();
         } else {
-            showToast('Error fetching data', 'error');
+            showToast(data.message || 'Error fetching data', 'error');
         }
     } catch (err) {
         console.error(err);
