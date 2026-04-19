@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SDMS</title>
+    <meta name="description" content="Login or Register to the Student Data Management System.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="auth-page">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h1 class="auth-title">Welcome to SDMS</h1>
+            <p class="auth-subtitle">Student Data Management System</p>
+
+            <div class="tab-container">
+                <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Login</button>
+                <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active-form">
+                <div class="input-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" required placeholder="Enter username">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required placeholder="Enter password (min 6 chars)">
+                </div>
+                <button type="submit" class="primary-btn">Log In</button>
+                <div id="login-error" class="error-msg"></div>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form hidden-form">
+                <div class="input-group">
+                    <label for="reg-username">Username</label>
+                    <input type="text" id="reg-username" required placeholder="Choose a username">
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Password</label>
+                    <input type="password" id="reg-password" required placeholder="Create a password (min 6 chars)">
+                </div>
+                <div class="input-group">
+                    <label for="reg-role">Role</label>
+                    <select id="reg-role" class="filter-dropdown" style="width:100%;"
+                        onchange="toggleEmailField(this.value)">
+                        <option value="instructor">Staff / Instructor</option>
+                        <option value="student">Student</option>
+                    </select>
+                </div>
+                <!-- Email field: required for students to link their account to their student record -->
+                <div class="input-group hidden" id="email-group">
+                    <label for="reg-email">School Email <span style="color:var(--danger)">*</span></label>
+                    <input type="email" id="reg-email" placeholder="Your school email (used to find your record)">
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">
+                        This must match the email your instructor has on record.
+                    </p>
+                </div>
+                <button type="submit" class="primary-btn">Register</button>
+                <div id="register-error" class="error-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleEmailField(role) {
+            const emailGroup = document.getElementById('email-group');
+            const emailInput = document.getElementById('reg-email');
+            if (role === 'student') {
+                emailGroup.classList.remove('hidden');
+                emailInput.required = true;
+            } else {
+                emailGroup.classList.add('hidden');
+                emailInput.required = false;
+                emailInput.value = '';
+            }
+        }
+    </script>
+    <script src="js/auth.js"></script>
+</body>
+
+</html>
