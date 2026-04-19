@@ -36,6 +36,14 @@ app.use('/api/students', require('./routes/students'));
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
 });
+// Dashboard page
+app.get('/dashboard', (req, res) => {
+    res.sendFile(__dirname + '/public/dashboard.html');
+});
+//Student Dashboard page
+app.get('/student-dashboard', (req, res) => {
+    res.sendFile(__dirname + '/public/student-dashboard.html');
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
