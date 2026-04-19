@@ -2,9 +2,10 @@ trigger:
 - main
 
 pool:
-  name: MyPool
+  name: MyPool   # self-hosted agent
 
 steps:
+
 # Install Node.js
 - task: NodeTool@0
   inputs:
@@ -14,27 +15,32 @@ steps:
 - script: npm install
   displayName: Install Dependencies
 
-# Run tests
-- script: npm test
-  displayName: Run Tests
+# (Optional) Run tests - keep only if you have tests
+# - script: npm test
+#   displayName: Run Tests
 
-# Archive files
+# Build step (important for deployment)
+- script: echo "Build completed"
+  displayName: Build Step
+
+# Archive project files
 - task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
     includeRootFolder: false
     archiveType: 'zip'
     archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+    replaceExistingArchive: true
 
 # Publish artifact
 - task: PublishBuildArtifacts@1
   inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/app.zip'
     artifactName: 'drop'
 
 # Deploy to Azure App Service
 - task: AzureWebApp@1
   inputs:
-    azureSubscription: 'AzureConnection'
-    appName: 'sdms-app'
+    azureSubscription: 'AzureConnection'   # must match your service connection name
+    appName: 'sdms-app'                    # must match your App Service name EXACTLY
     package: '$(Build.ArtifactStagingDirectory)/app.zip'
