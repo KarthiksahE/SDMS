@@ -7,7 +7,7 @@ pool:
 steps:
 
 # Install Node.js
-- task: NodeTool@0
+- task: UseNode@1
   inputs:
     versionSpec: '18.x'
 
