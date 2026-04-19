@@ -36,7 +36,7 @@ app.use('/api/students', require('./routes/students'));
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
 });
-// Dashboard page
+//Dashboard page
 app.get('/dashboard', (req, res) => {
     res.sendFile(__dirname + '/public/dashboard.html');
 });
