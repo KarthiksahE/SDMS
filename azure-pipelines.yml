@@ -2,33 +2,47 @@ trigger:
 - main
 
 pool:
-  name: MyPool   # self-hosted agent
+  name: MyPool
 
 steps:
 
-# Install Node.js
+# Install Node
 - task: UseNode@1
   inputs:
-    versionSpec: '18.x'
+    version: '18.x'
 
-# Install dependencies
+# Install backend dependencies
 - script: npm install
-  displayName: Install Dependencies
+  workingDirectory: backend
+  displayName: Install Backend
 
-# (Optional) Run tests - keep only if you have tests
-# - script: npm test
-#   displayName: Run Tests
+# Install frontend dependencies
+- script: npm install
+  workingDirectory: frontend
+  displayName: Install Frontend
 
-# Build step (important for deployment)
-- script: echo "Build completed"
-  displayName: Build Step
+# Build React app
+- script: npm run build
+  workingDirectory: frontend
+  displayName: Build Frontend
 
-# Archive project files
+# Copy frontend build to backend (IMPORTANT)
+- script: |
+    xcopy frontend\build backend\public /E /I /Y
+  displayName: Copy Frontend to Backend
+
+# (Optional) Run tests
+- script: npm test
+  workingDirectory: backend
+  displayName: Run Tests
+  continueOnError: true
+
+# Archive backend (with frontend included)
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)/backend'
     includeRootFolder: false
-    archiveType: 'zip'
+    archiveType: zip
     archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
     replaceExistingArchive: true
 
@@ -36,11 +50,11 @@ steps:
 - task: PublishBuildArtifacts@1
   inputs:
     pathToPublish: '$(Build.ArtifactStagingDirectory)/app.zip'
-    artifactName: 'drop'
+    artifactName: drop
 
-# Deploy to Azure App Service
+# Deploy to Azure
 - task: AzureWebApp@1
   inputs:
-    azureSubscription: 'AzureConnection'   # must match your service connection name
-    appName: 'sdms-app'                    # must match your App Service name EXACTLY
+    azureSubscription: 'AzureConnection'
+    appName: 'sdms-app'
     package: '$(Build.ArtifactStagingDirectory)/app.zip'
