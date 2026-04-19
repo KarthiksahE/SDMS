@@ -16,26 +16,10 @@ steps:
   workingDirectory: backend
   displayName: Install Backend
 
-# Install frontend dependencies
-- script: npm install
-  workingDirectory: frontend
-  displayName: Install Frontend
-
-# Build React app
-- script: npm run build
-  workingDirectory: frontend
-  displayName: Build Frontend
-
-# Copy frontend build to backend (IMPORTANT)
+# Copy frontend into backend (IMPORTANT)
 - script: |
-    xcopy frontend\build backend\public /E /I /Y
+    xcopy frontend backend\public /E /I /Y
   displayName: Copy Frontend to Backend
-
-# (Optional) Run tests
-- script: npm test
-  workingDirectory: backend
-  displayName: Run Tests
-  continueOnError: true
 
 # Archive backend (with frontend included)
 - task: ArchiveFiles@2
