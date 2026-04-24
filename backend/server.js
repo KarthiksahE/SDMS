@@ -12,6 +12,7 @@ let mongoLastError = null;
 function resolveMongoUri() {
     const candidates = [
         { key: 'MONGODB_URI', value: process.env.MONGODB_URI },
+        { key: 'MONGODB_URL', value: process.env.MONGODB_URL },
         { key: 'MONGO_URI', value: process.env.MONGO_URI },
         // Azure App Service exposes custom connection strings as CUSTOMCONNSTR_<NAME>
         { key: 'CUSTOMCONNSTR_MONGODB_URI', value: process.env.CUSTOMCONNSTR_MONGODB_URI }
@@ -54,7 +55,7 @@ app.use('/api', apiLimiter);
 
 // MongoDB Connection
 if (!mongoConfig.uri) {
-    mongoLastError = 'MongoDB URI missing. Set MONGODB_URI (or MONGO_URI / CUSTOMCONNSTR_MONGODB_URI).';
+    mongoLastError = 'MongoDB URI missing. Set MONGODB_URI (or MONGODB_URL / MONGO_URI / CUSTOMCONNSTR_MONGODB_URI).';
     console.log('MongoDB Error:', mongoLastError);
 } else {
     mongoose.connect(mongoConfig.uri)
