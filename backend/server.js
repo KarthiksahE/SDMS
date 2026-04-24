@@ -37,11 +37,23 @@ app.use('/api', apiLimiter);
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log('MongoDB Error:', err));
+    .catch(err => console.log('MongoDB Error:', err.message));
+
+mongoose.connection.on('error', (err) => {
+    console.log('MongoDB Connection Error:', err.message);
+});
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
+
+app.get('/health', (req, res) => {
+    res.json({
+        ok: true,
+        mongoReadyState: mongoose.connection.readyState,
+        mongoConnected: mongoose.connection.readyState === 1
+    });
+});
 
 // Resolve frontend location for both local dev and Azure deployment packages.
 const frontendCandidates = [

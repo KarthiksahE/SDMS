@@ -2,11 +2,20 @@ const express = require('express');
 const { check, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const router = express.Router();
 
 function isAuthConfigValid() {
     return Boolean(process.env.JWT_SECRET);
+}
+
+function isBcryptHash(value) {
+    return typeof value === 'string' && /^\$2[aby]?\$\d\d\$[./A-Za-z0-9]{53}$/.test(value);
+}
+
+function isMongoConnected() {
+    return mongoose.connection.readyState === 1;
 }
 
 router.post('/register', [
@@ -54,6 +63,10 @@ router.post('/login', [
         return res.status(500).json({ message: 'Server auth configuration is missing.' });
     }
 
+    if (!isMongoConnected()) {
+        return res.status(503).json({ message: 'Database is not connected. Please try again in a moment.' });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
@@ -62,7 +75,24 @@ router.post('/login', [
         let user = await User.findOne({ username });
         if (!user) return res.status(400).json({ message: 'User Not Exist' });
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        if (typeof user.password !== 'string' || !user.password.trim()) {
+            return res.status(500).json({ message: 'User account is missing a password.' });
+        }
+
+        let isMatch = false;
+        if (isBcryptHash(user.password)) {
+            isMatch = await bcrypt.compare(password, user.password);
+        } else {
+            isMatch = password === user.password;
+
+            // Migrate legacy plaintext passwords to bcrypt after a successful login.
+            if (isMatch) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(password, salt);
+                await user.save();
+            }
+        }
+
         if (!isMatch) return res.status(400).json({ message: 'Incorrect Password !' });
 
         const payload = { user: { id: user.id, role: user.role } };
