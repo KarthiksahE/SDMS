@@ -40,6 +40,15 @@ function normalizeStudentDoc(studentDoc) {
     };
 }
 
+function isAdmin(user) {
+    return user && user.role === 'admin';
+}
+
+function getInstructorScope(user) {
+    if (!user || isAdmin(user)) return {};
+    return { uploadedBy: user.id };
+}
+
 router.post('/import', auth, upload.array('files'), async (req, res) => {
 
     if (!req.user || req.user.role === 'student') {
@@ -145,7 +154,9 @@ router.get('/my-record', auth, async (req, res) => {
 router.get('/classwise', auth, async (req, res) => {
     if (req.user.role === 'student') return res.status(403).json({ message: 'Unauthorized.' });
     try {
+        const scope = getInstructorScope(req.user);
         const classes = await Student.aggregate([
+            ...(Object.keys(scope).length ? [{ $match: scope }] : []),
             {
                 $group: {
                     _id: "$section",
@@ -193,6 +204,9 @@ router.get('/', auth, async (req, res) => {
         if (course) conditions.push({ course });
         if (grade) conditions.push({ grade });
         if (section) conditions.push({ section });
+
+        const scope = getInstructorScope(req.user);
+        if (Object.keys(scope).length) conditions.push(scope);
 
         const query = conditions.length ? { $and: conditions } : {};
 
@@ -265,7 +279,12 @@ router.put('/:id', auth, async (req, res) => {
             // If manual update from dashboard, we just update the percentage for simplicity in existing UI
             updates['attendance.percentage'] = attendance != null && attendance !== '' ? Number(attendance) : 0;
         }
-        const student = await Student.findByIdAndUpdate(req.params.id, updates, { new: true });
+        const scope = getInstructorScope(req.user);
+        const filter = { _id: req.params.id, ...scope };
+        const student = await Student.findOneAndUpdate(filter, updates, { new: true });
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
         res.json(student);
     } catch (err) {
         res.status(500).json({ message: 'Error updating student' });
@@ -278,7 +297,12 @@ router.delete('/:id', auth, async (req, res) => {
         return res.status(403).json({ message: 'Unauthorized. Students cannot delete records.' });
     }
     try {
-        await Student.findByIdAndDelete(req.params.id);
+        const scope = getInstructorScope(req.user);
+        const filter = { _id: req.params.id, ...scope };
+        const result = await Student.findOneAndDelete(filter);
+        if (!result) {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
         res.json({ message: 'Student deleted' });
     } catch (err) {
         res.status(500).json({ message: 'Error deleting student' });
@@ -295,7 +319,9 @@ router.post('/attendance', auth, async (req, res) => {
     }
 
     try {
-        const student = await Student.findById(studentId);
+        const scope = getInstructorScope(req.user);
+        const filter = { _id: studentId, ...scope };
+        const student = await Student.findOne(filter);
         if (!student) return res.status(404).json({ message: 'Student not found.' });
 
         // Check if attendance already exists for this date
