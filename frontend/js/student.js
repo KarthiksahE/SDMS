@@ -1,4 +1,4 @@
-const API_URL = '/api';
+const API_URL = window.SDMS_CONFIG?.API_URL || `${window.location.origin}/api`;
 const token = localStorage.getItem('token');
 const role = localStorage.getItem('role');
 
@@ -14,7 +14,7 @@ if (!token || !role) {
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     fetchUserAndRecord();
-
+    
     document.getElementById('logout-btn').addEventListener('click', () => {
         localStorage.removeItem('token');
         localStorage.removeItem('role');

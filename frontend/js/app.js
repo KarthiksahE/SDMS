@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = window.SDMS_CONFIG?.API_URL || `${window.location.origin}/api`;
 const token = localStorage.getItem('token');
 const role = localStorage.getItem('role');
 

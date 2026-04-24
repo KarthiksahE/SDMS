@@ -3,17 +3,28 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 
 // Middleware
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve frontend (IMPORTANT)
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Rate Limiting
 const apiLimiter = rateLimit({
@@ -32,18 +43,25 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
 
-// Page Routes (optional but good)
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Serve frontend in deployed mode when frontend files exist in ../frontend
+const frontendDir = path.resolve(__dirname, '../frontend');
+const hasFrontendBuild = fs.existsSync(path.join(frontendDir, 'index.html'));
 
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
+if (hasFrontendBuild) {
+    app.use(express.static(frontendDir));
 
-app.get('/student-dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'student-dashboard.html'));
-});
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(frontendDir, 'index.html'));
+    });
+
+    app.get('/dashboard', (req, res) => {
+        res.sendFile(path.join(frontendDir, 'dashboard.html'));
+    });
+
+    app.get('/student-dashboard', (req, res) => {
+        res.sendFile(path.join(frontendDir, 'student-dashboard.html'));
+    });
+}
 
 // Start Server
 const PORT = process.env.PORT || 5000;

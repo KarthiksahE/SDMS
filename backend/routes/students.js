@@ -10,68 +10,107 @@ const User = require('../models/User');
 // Set up multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Upload CSVs in bulk (parallel processing)
+function normalizeAttendance(attendance) {
+    if (attendance == null) {
+        return { percentage: 0, records: [] };
+    }
+
+    if (typeof attendance === 'number') {
+        const percentage = Math.max(0, Math.min(100, Number(attendance) || 0));
+        return { percentage, records: [] };
+    }
+
+    const parsedPercentage = Number(attendance.percentage);
+    const percentage = Number.isFinite(parsedPercentage)
+        ? Math.max(0, Math.min(100, parsedPercentage))
+        : 0;
+
+    return {
+        percentage,
+        records: Array.isArray(attendance.records) ? attendance.records : []
+    };
+}
+
+function normalizeStudentDoc(studentDoc) {
+    if (!studentDoc) return studentDoc;
+
+    return {
+        ...studentDoc,
+        attendance: normalizeAttendance(studentDoc.attendance)
+    };
+}
+
 router.post('/import', auth, upload.array('files'), async (req, res) => {
-    if (req.user.role === 'student') return res.status(403).json({ message: 'Unauthorized.' });
+
+    if (!req.user || req.user.role === 'student') {
+        return res.status(403).json({ message: 'Unauthorized.' });
+    }
+
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ message: 'No files uploaded.' });
         }
 
-        const filePromises = req.files.map(async (file) => {
+        const results = [];
+
+        for (const file of req.files) {
+
             const csvString = file.buffer.toString('utf-8');
             const jsonArray = await csvtojson().fromString(csvString);
 
             const validStudents = [];
             const errors = [];
 
-            jsonArray.forEach((row, index) => {
+            for (let index = 0; index < jsonArray.length; index++) {
+                const row = jsonArray[index];
+
                 if (row.name && row.email && row.grade && row.course) {
+
+                    const email = row.email.toLowerCase().trim();
+                    const parsedAttendance = Number(row.attendance);
+
                     validStudents.push({
-                        name: row.name,
-                        email: row.email,
+                        name: row.name.trim(),
+                        email,
                         grade: row.grade,
                         course: row.course,
                         section: row.section || row.class || '',
                         phone: row.phone || '',
                         attendance: {
-                            percentage: row.attendance != null && row.attendance !== '' ? Number(row.attendance) : 0,
+                            percentage: !isNaN(parsedAttendance) ? parsedAttendance : 0,
                             records: []
                         },
                         uploadedBy: req.user.id
                     });
-                } else {
-                    errors.push(`Row ${index + 1} in file ${file.originalname} has missing fields.`);
-                }
-            });
 
-            let insertedRaw = 0;
-            for (let student of validStudents) {
-                try {
-                    await Student.updateOne(
-                        { email: student.email },
-                        { $set: student },
-                        { upsert: true }
-                    );
-                    insertedRaw++;
-                } catch (err) {
-                    errors.push(`Error inserting row with email ${student.email}: ${err.message}`);
+                } else {
+                    errors.push(`Row ${index + 1} missing required fields`);
                 }
             }
 
-            return {
+            const operations = validStudents.map(student => ({
+                updateOne: {
+                    filter: { email: student.email },
+                    update: { $set: student },
+                    upsert: true
+                }
+            }));
+
+            const result = await Student.bulkWrite(operations);
+
+            results.push({
                 fileName: file.originalname,
                 processed: validStudents.length,
-                insertedOrUpdated: insertedRaw,
-                errors: errors
-            };
-        });
+                insertedOrUpdated: result.modifiedCount + result.upsertedCount,
+                errors
+            });
+        }
 
-        const results = await Promise.all(filePromises);
         res.status(200).json({ message: 'Batch import completed', details: results });
+
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Server error during import.' });
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -81,14 +120,23 @@ router.get('/my-record', auth, async (req, res) => {
         return res.status(403).json({ message: 'Only students can use this endpoint.' });
     }
     try {
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id).lean();
         if (!user || !user.email) {
             return res.status(404).json({ message: 'No email linked to your account. Please ask your instructor to update your profile.' });
         }
-        const student = await Student.findOne({ email: new RegExp(`^${user.email}$`, 'i') });
-        if (!student) return res.status(404).json({ message: 'No academic record found for your account. Please contact your instructor.' });
-        res.json(student);
+
+        const escapedEmail = user.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const student = await Student.collection.findOne({
+            email: { $regex: `^${escapedEmail}$`, $options: 'i' }
+        });
+
+        if (!student) {
+            return res.status(404).json({ message: 'No academic record found for your account. Please contact your instructor.' });
+        }
+
+        res.json(normalizeStudentDoc(student));
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: 'Error fetching your record.' });
     }
 });
@@ -115,32 +163,59 @@ router.get('/classwise', auth, async (req, res) => {
 
 // Search and Read (CRUD - Read) — Instructor/Admin only
 router.get('/', auth, async (req, res) => {
-    if (req.user.role === 'student') {
-        return res.status(403).json({ message: 'Access denied. Use /my-record to view your data.' });
+
+    if (!req.user || req.user.role === 'student') {
+        return res.status(403).json({
+            message: 'Access denied. Use /my-record to view your data.'
+        });
     }
+
     try {
-        const { search, course, grade, section } = req.query;
+        const { search, course, grade, section, page, limit } = req.query;
+
+        const escapeRegex = (text) =>
+            text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
         const conditions = [];
 
         if (search) {
+            const safeSearch = escapeRegex(search);
             conditions.push({
                 $or: [
-                    { name: { $regex: search, $options: 'i' } },
-                    { course: { $regex: search, $options: 'i' } },
-                    { email: { $regex: search, $options: 'i' } },
-                    { section: { $regex: search, $options: 'i' } }
+                    { name: { $regex: safeSearch, $options: 'i' } },
+                    { course: { $regex: safeSearch, $options: 'i' } },
+                    { email: { $regex: safeSearch, $options: 'i' } },
+                    { section: { $regex: safeSearch, $options: 'i' } }
                 ]
             });
         }
-        if (course) conditions.push({ course: { $regex: `^${course}$`, $options: 'i' } });
-        if (grade) conditions.push({ grade: { $regex: `^${grade}$`, $options: 'i' } });
-        if (section) conditions.push({ section: { $regex: `^${section}$`, $options: 'i' } });
 
-        const query = conditions.length > 0 ? { $and: conditions } : {};
-        const students = await Student.find(query).sort({ createdAt: -1 });
-        res.json(students);
+        if (course) conditions.push({ course });
+        if (grade) conditions.push({ grade });
+        if (section) conditions.push({ section });
+
+        const query = conditions.length ? { $and: conditions } : {};
+
+        let studentsCursor = Student.collection
+            .find(query, { projection: { __v: 0 } })
+            .sort({ updatedAt: -1, createdAt: -1, _id: -1 });
+
+        // Apply pagination only when client explicitly requests it.
+        const pageNum = Number(page);
+        const limitNum = Number(limit);
+        if (Number.isInteger(pageNum) && pageNum > 0 && Number.isInteger(limitNum) && limitNum > 0) {
+            studentsCursor = studentsCursor
+                .skip((pageNum - 1) * limitNum)
+                .limit(limitNum);
+        }
+
+        const students = await studentsCursor.toArray();
+
+        res.json(students.map(normalizeStudentDoc));
+
     } catch (err) {
-        res.status(500).json({ message: 'Error fetching students' });
+        console.error(err);
+        res.status(500).json({ message: err.message });
     }
 });
 

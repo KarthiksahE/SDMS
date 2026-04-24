@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = __dirname;
 const port = process.env.PORT || 3000;
+const runtimeApiUrl = process.env.SDMS_API_URL || '';
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -34,7 +35,20 @@ function sendFile(response, filePath) {
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    response.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    if (ext === '.html') {
+      let html = content.toString('utf-8');
+      if (runtimeApiUrl) {
+        const safeApiUrl = JSON.stringify(runtimeApiUrl);
+        html = html.replace('</head>', `<script>window.__SDMS_API_URL=${safeApiUrl};</script></head>`);
+      }
+      response.writeHead(200, { 'Content-Type': contentType });
+      response.end(html);
+      return;
+    }
+
+    response.writeHead(200, { 'Content-Type': contentType });
     response.end(content);
   });
 }
