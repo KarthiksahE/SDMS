@@ -9,6 +9,23 @@ require('dotenv').config();
 const app = express();
 let mongoLastError = null;
 
+function resolveMongoUri() {
+    const candidates = [
+        { key: 'MONGODB_URI', value: process.env.MONGODB_URI },
+        { key: 'MONGO_URI', value: process.env.MONGO_URI },
+        // Azure App Service exposes custom connection strings as CUSTOMCONNSTR_<NAME>
+        { key: 'CUSTOMCONNSTR_MONGODB_URI', value: process.env.CUSTOMCONNSTR_MONGODB_URI }
+    ];
+
+    const found = candidates.find((item) => typeof item.value === 'string' && item.value.trim());
+    return {
+        uri: found ? found.value.trim() : '',
+        source: found ? found.key : null
+    };
+}
+
+const mongoConfig = resolveMongoUri();
+
 // Middleware
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
     .split(',')
@@ -36,7 +53,11 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
+if (!mongoConfig.uri) {
+    mongoLastError = 'MongoDB URI missing. Set MONGODB_URI (or MONGO_URI / CUSTOMCONNSTR_MONGODB_URI).';
+    console.log('MongoDB Error:', mongoLastError);
+} else {
+    mongoose.connect(mongoConfig.uri)
     .then(() => {
         mongoLastError = null;
         console.log('MongoDB Connected');
@@ -45,6 +66,7 @@ mongoose.connect(process.env.MONGODB_URI)
         mongoLastError = err.message;
         console.log('MongoDB Error:', err.message);
     });
+}
 
 mongoose.connection.on('error', (err) => {
     mongoLastError = err.message;
@@ -60,6 +82,7 @@ app.get('/health', (req, res) => {
         ok: true,
         mongoReadyState: mongoose.connection.readyState,
         mongoConnected: mongoose.connection.readyState === 1,
+        mongoUriSource: mongoConfig.source,
         mongoLastError
     });
 });
