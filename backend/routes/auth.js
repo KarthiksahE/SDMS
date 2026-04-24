@@ -5,10 +5,18 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const router = express.Router();
 
+function isAuthConfigValid() {
+    return Boolean(process.env.JWT_SECRET);
+}
+
 router.post('/register', [
     check('username', 'Please enter a valid username').not().isEmpty(),
     check('password', 'Please enter a valid password').isLength({ min: 6 })
 ], async (req, res) => {
+    if (!isAuthConfigValid()) {
+        return res.status(500).json({ message: 'Server auth configuration is missing.' });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
@@ -26,7 +34,10 @@ router.post('/register', [
 
         const payload = { user: { id: user.id, role: user.role } };
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 360000 }, (err, token) => {
-            if (err) throw err;
+            if (err) {
+                console.error('JWT sign error (register):', err.message);
+                return res.status(500).json({ message: 'Could not complete registration.' });
+            }
             res.status(201).json({ token, role: user.role });
         });
     } catch (err) {
@@ -39,6 +50,10 @@ router.post('/login', [
     check('username', 'Please enter a valid username').not().isEmpty(),
     check('password', 'Please enter a valid password').isLength({ min: 6 })
 ], async (req, res) => {
+    if (!isAuthConfigValid()) {
+        return res.status(500).json({ message: 'Server auth configuration is missing.' });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
@@ -52,7 +67,10 @@ router.post('/login', [
 
         const payload = { user: { id: user.id, role: user.role } };
         jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 360000 }, (err, token) => {
-            if (err) throw err;
+            if (err) {
+                console.error('JWT sign error (login):', err.message);
+                return res.status(500).json({ message: 'Could not complete login.' });
+            }
             res.status(200).json({ token, role: user.role });
         });
     } catch (e) {

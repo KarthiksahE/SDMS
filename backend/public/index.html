@@ -27,11 +27,11 @@
             <form id="login-form" class="auth-form active-form">
                 <div class="input-group">
                     <label for="login-username">Username</label>
-                    <input type="text" id="login-username" required placeholder="Enter username">
+                    <input type="text" id="login-username" required autocomplete="username" placeholder="Enter username">
                 </div>
                 <div class="input-group">
                     <label for="login-password">Password</label>
-                    <input type="password" id="login-password" required placeholder="Enter password (min 6 chars)">
+                    <input type="password" id="login-password" required autocomplete="current-password" placeholder="Enter password (min 6 chars)">
                 </div>
                 <button type="submit" class="primary-btn">Log In</button>
                 <div id="login-error" class="error-msg"></div>
@@ -41,11 +41,11 @@
             <form id="register-form" class="auth-form hidden-form">
                 <div class="input-group">
                     <label for="reg-username">Username</label>
-                    <input type="text" id="reg-username" required placeholder="Choose a username">
+                    <input type="text" id="reg-username" required autocomplete="username" placeholder="Choose a username">
                 </div>
                 <div class="input-group">
                     <label for="reg-password">Password</label>
-                    <input type="password" id="reg-password" required placeholder="Create a password (min 6 chars)">
+                    <input type="password" id="reg-password" required autocomplete="new-password" placeholder="Create a password (min 6 chars)">
                 </div>
                 <div class="input-group">
                     <label for="reg-role">Role</label>
