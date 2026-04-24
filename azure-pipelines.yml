@@ -21,6 +21,11 @@ steps:
     xcopy frontend backend\public /E /I /Y
   displayName: Copy Frontend to Backend
 
+# Keep package lean for zip deploy (App Service installs dependencies from package.json)
+- script: |
+    if exist backend\node_modules rmdir /S /Q backend\node_modules
+  displayName: Remove Backend node_modules Before Archive
+
 # Archive backend (with frontend included)
 - task: ArchiveFiles@2
   inputs:
