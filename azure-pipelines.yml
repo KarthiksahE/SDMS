@@ -11,11 +11,6 @@ steps:
   inputs:
     version: '18.x'
 
-# Install backend dependencies
-- script: npm install
-  workingDirectory: backend
-  displayName: Install Backend
-
 # Copy frontend into backend (IMPORTANT)
 - script: |
     xcopy frontend backend\public /E /I /Y
@@ -47,3 +42,4 @@ steps:
     azureSubscription: 'AzureConnection'
     appName: 'sdms-app'
     package: '$(Build.ArtifactStagingDirectory)/app.zip'
+    appSettings: '-SCM_DO_BUILD_DURING_DEPLOYMENT true -ENABLE_ORYX_BUILD true'
