@@ -42,4 +42,4 @@ steps:
     azureSubscription: 'AzureConnection'
     appName: 'sdms-app'
     package: '$(Build.ArtifactStagingDirectory)/app.zip'
-    appSettings: '-SCM_DO_BUILD_DURING_DEPLOYMENT true -ENABLE_ORYX_BUILD true'
+    appSettings: '-SCM_DO_BUILD_DURING_DEPLOYMENT true -ENABLE_ORYX_BUILD true -WEBSITE_NODE_DEFAULT_VERSION ~20'
