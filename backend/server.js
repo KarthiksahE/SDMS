@@ -7,6 +7,7 @@ const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
+let mongoLastError = null;
 
 // Middleware
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
@@ -36,10 +37,17 @@ app.use('/api', apiLimiter);
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log('MongoDB Error:', err.message));
+    .then(() => {
+        mongoLastError = null;
+        console.log('MongoDB Connected');
+    })
+    .catch(err => {
+        mongoLastError = err.message;
+        console.log('MongoDB Error:', err.message);
+    });
 
 mongoose.connection.on('error', (err) => {
+    mongoLastError = err.message;
     console.log('MongoDB Connection Error:', err.message);
 });
 
@@ -51,7 +59,8 @@ app.get('/health', (req, res) => {
     res.json({
         ok: true,
         mongoReadyState: mongoose.connection.readyState,
-        mongoConnected: mongoose.connection.readyState === 1
+        mongoConnected: mongoose.connection.readyState === 1,
+        mongoLastError
     });
 });
 
