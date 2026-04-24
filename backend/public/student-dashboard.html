@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="sdms-api-url" content="">
+    <title>My Portal - SDMS</title>
+    <meta name="description" content="Student Portal - View your academic report card on SDMS.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Student Portal Specific Styles */
+        .portal-hero {
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            padding: 2.5rem 2rem;
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .portal-hero-inner {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .portal-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            flex-shrink: 0;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .portal-hero h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .portal-hero p {
+            opacity: 0.85;
+            font-size: 0.95rem;
+        }
+
+        /* Report Card */
+        .report-card-wrapper {
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .report-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .report-card-header {
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            padding: 2rem;
+            text-align: center;
+            color: white;
+        }
+
+        .report-card-header h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .report-card-header p {
+            opacity: 0.8;
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+        }
+
+        .report-card-body {
+            padding: 2rem;
+        }
+
+        .rc-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .rc-info-item label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .rc-info-item span {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .rc-main-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            align-items: center;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .rc-course-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        .rc-course-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .rc-grade-badge {
+            text-align: center;
+        }
+
+        .rc-grade-badge label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        #rc-grade {
+            display: inline-block;
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: var(--success);
+            color: white;
+            padding: 0.4rem 1.5rem;
+            border-radius: var(--radius-lg);
+            min-width: 80px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        /* Attendance Bar */
+        .attendance-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .attendance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .attendance-header label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .attendance-value {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .attendance-bar-track {
+            height: 10px;
+            background: var(--border-color);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .attendance-bar-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 1s ease-out, background 0.3s;
+        }
+
+        .rc-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .rc-actions button {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        /* Not found / loading states */
+        .portal-center {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .no-record-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .no-record-card i {
+            font-size: 3rem;
+            color: var(--text-muted);
+            opacity: 0.4;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .no-record-card h3 {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .no-record-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .rc-info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .rc-main-row {
+                grid-template-columns: 1fr;
+            }
+
+            .rc-grade-badge {
+                text-align: left;
+            }
+        }
+    </style>
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+
+<body class="dashboard-page student-portal">
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fas fa-user-graduate"></i> My SDMS Portal
+        </div>
+        <div class="nav-actions">
+            <button id="theme-toggle" class="nav-btn" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+            <span id="user-display" class="user-pill"><i class="fas fa-user"></i> <span>Student</span></span>
+            <button id="logout-btn" class="nav-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </nav>
+
+    <!-- Hero Banner -->
+    <div class="portal-hero">
+        <div class="portal-hero-inner">
+            <div class="portal-avatar"><i class="fas fa-user-graduate"></i></div>
+            <div>
+                <h2>Welcome, <span id="hero-name">Student</span>!</h2>
+                <p>Your official academic report card is displayed below.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="portal-center" id="spinner-wrapper">
+        <div id="loading-spinner" class="loader"></div>
+    </div>
+
+    <!-- Report Card -->
+    <div class="report-card-wrapper hidden" id="report-card">
+        <div class="report-card">
+            <div class="report-card-header">
+                <h1><i class="fas fa-award"></i> Official Academic Report Card</h1>
+                <p>Student Data Management System &bull; Academic Year 2026</p>
+            </div>
+            <div class="report-card-body">
+                <!-- Student Info Grid -->
+                <div class="rc-info-grid">
+                    <div class="rc-info-item">
+                        <label>Full Name</label>
+                        <span id="rc-name">—</span>
+                    </div>
+                    <div class="rc-info-item">
+                        <label>Email Address</label>
+                        <span id="rc-email">—</span>
+                    </div>
+                    <div class="rc-info-item">
+                        <label>Class / Section</label>
+                        <span id="rc-section">—</span>
+                    </div>
+                    <div class="rc-info-item">
+                        <label>Contact</label>
+                        <span id="rc-phone">—</span>
+                    </div>
+                </div>
+
+                <!-- Course & Grade -->
+                <div class="rc-main-row">
+                    <div>
+                        <div class="rc-course-label">Enrolled Course</div>
+                        <div class="rc-course-name" id="rc-course">—</div>
+                    </div>
+                    <div class="rc-grade-badge">
+                        <label>Final Grade</label>
+                        <div id="rc-grade">?</div>
+                    </div>
+                </div>
+
+                <!-- Attendance Bar -->
+                <div class="attendance-section" id="attendance-section">
+                    <div class="attendance-header">
+                        <label>Attendance</label>
+                        <span class="attendance-value" id="rc-attendance-text">—</span>
+                    </div>
+                    <div class="attendance-bar-track">
+                        <div class="attendance-bar-fill" id="attendance-bar" style="width:0%"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Absent Dates Section -->
+            <div id="absent-records-section" class="mt-4 hidden">
+                <div class="attendance-header">
+                    <label><i class="fas fa-calendar-times"></i> Absent Dates</label>
+                </div>
+                <div id="absent-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                    <!-- Dates will be injected here -->
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="rc-actions">
+                <button class="action-btn new-btn" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print Official Copy
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- No Record Found -->
+    <div class="portal-center hidden" id="not-found">
+        <div class="no-record-card">
+            <i class="fas fa-folder-open"></i>
+            <h3>No Academic Record Found</h3>
+            <p id="not-found-msg">Your account is not yet linked to an academic record. Please contact your instructor.
+            </p>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/student.js"></script>
+</body>
+
+</html>

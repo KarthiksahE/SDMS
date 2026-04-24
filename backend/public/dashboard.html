@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="sdms-api-url" content="">
+    <title>Dashboard - SDMS</title>
+    <meta name="description"
+        content="Dashboard for Student Data Management System. Manage students, perform CRUD operations, and import bulk CSV data.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        // Init theme early to avoid flicker
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+
+<body class="dashboard-page">
+    <!-- Sidebar / Topbar depending on responsive view -->
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fas fa-graduation-cap"></i> SDMS
+        </div>
+        <div class="nav-actions">
+            <button id="theme-toggle" class="nav-btn" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+            <span id="user-display" class="user-pill"><i class="fas fa-user-circle"></i> <span>User</span></span>
+            <button id="logout-btn" class="nav-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </nav>
+
+    <main class="dashboard-content">
+        <header class="page-header">
+            <h2>Student Management</h2>
+            <div class="header-actions">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search...">
+                </div>
+
+                <select id="filter-course" class="filter-dropdown">
+                    <option value="">All Courses</option>
+                </select>
+
+                <select id="filter-grade" class="filter-dropdown">
+                    <option value="">All Grades</option>
+                </select>
+
+                <select id="filter-section" class="filter-dropdown">
+                    <option value="">All Sections</option>
+                </select>
+
+                <button class="action-btn new-btn" onclick="openModal('student-modal')">
+                    <i class="fas fa-plus"></i> Add New
+                </button>
+                <button class="action-btn import-btn" onclick="openModal('import-modal')">
+                    <i class="fas fa-file-csv"></i> Batch Import
+                </button>
+                <button class="action-btn export-btn" onclick="exportToCSV()">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="action-btn export-btn" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <div class="stat-info">
+                    <h4 id="stat-total-students">0</h4>
+                    <p>Total Students</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-book-open"></i>
+                <div class="stat-info">
+                    <h4 id="stat-courses">0</h4>
+                    <p>Unique Courses</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-star"></i>
+                <div class="stat-info">
+                    <h4 id="stat-top-grades">0</h4>
+                    <p>Top Grades (A/A+)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="chart-card">
+                <h3>Course Distribution</h3>
+                <div class="chart-container"><canvas id="courseChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3>Grade Distribution</h3>
+                <div class="chart-container"><canvas id="gradeChart"></canvas></div>
+            </div>
+        </section>
+
+        <section class="data-section">
+            <div class="table-container">
+                <table id="students-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('name')" class="sortable">Name <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('email')" class="sortable">Email <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('section')" class="sortable">Section <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('grade')" class="sortable">Grade <i class="fas fa-sort"></i></th>
+                            <th onclick="sortTable('course')" class="sortable">Course <i class="fas fa-sort"></i></th>
+                            <th>Attendance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-table-body">
+                        <!-- Student rows will be injected here -->
+                    </tbody>
+                </table>
+                <div id="loading-spinner" class="loader"></div>
+                <div id="empty-state" class="empty-state hidden">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No students found. Add new or import data.</p>
+                </div>
+            </div>
+
+            <div id="pagination" class="pagination-container hidden">
+                <button id="prev-page" class="pager-btn" onclick="changePage(-1)"><i
+                        class="fas fa-chevron-left"></i></button>
+                <span id="page-info">Page 1 of 1</span>
+                <button id="next-page" class="pager-btn" onclick="changePage(1)"><i
+                        class="fas fa-chevron-right"></i></button>
+            </div>
+        </section>
+        </div>
+        </section>
+
+        <!-- Attendance Modal -->
+        <div id="attendance-modal" class="modal-overlay hidden">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Mark Attendance</h3>
+                    <button class="close-btn" onclick="closeModal('attendance-modal')">&times;</button>
+                </div>
+                <div class="modal-body text-center">
+                    <p id="attendance-student-info" class="mb-4">Marking for: <strong>Student Name</strong></p>
+                    <input type="hidden" id="attendance-student-id">
+
+                    <div class="input-group">
+                        <label for="attendance-date">Date</label>
+                        <input type="date" id="attendance-date" required>
+                    </div>
+
+                    <div class="input-group mt-3">
+                        <label for="attendance-remark">Remark (Optional)</label>
+                        <input type="text" id="attendance-remark" placeholder="e.g. Health issue, family function">
+                    </div>
+
+                    <div class="attendance-actions mt-4" style="display: flex; gap: 1rem; justify-content: center;">
+                        <button class="btn btn-primary" onclick="submitAttendance('present')"
+                            style="flex: 1; background: var(--success);">
+                            <i class="fas fa-check-circle"></i> Present
+                        </button>
+                        <button class="btn btn-danger" onclick="submitAttendance('absent')"
+                            style="flex: 1; background: var(--error);">
+                            <i class="fas fa-times-circle"></i> Absent
+                        </button>
+                    </div>
+
+                    <div id="attendance-error" class="error-msg"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Student Modal (Add/Edit) -->
+    <div id="student-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Student</h3>
+                <button class="close-btn" onclick="closeModal('student-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="student-form">
+                    <input type="hidden" id="student-id">
+                    <div class="input-group">
+                        <label for="student-name">Name</label>
+                        <input type="text" id="student-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="student-email">Email</label>
+                        <input type="email" id="student-email" required>
+                    </div>
+                    <div class="input-group-row">
+                        <div class="input-group">
+                            <label for="student-grade">Grade</label>
+                            <input type="text" id="student-grade" required placeholder="e.g. A, B+">
+                        </div>
+                        <div class="input-group">
+                            <label for="student-section">Section</label>
+                            <input type="text" id="student-section" placeholder="e.g. 10A, 11B">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="student-course">Course</label>
+                        <input type="text" id="student-course" required>
+                    </div>
+                    <div class="input-group-row">
+                        <div class="input-group">
+                            <label for="student-phone">Phone</label>
+                            <input type="text" id="student-phone" placeholder="Contact number">
+                        </div>
+                        <div class="input-group">
+                            <label for="student-attendance">Attendance (%)</label>
+                            <input type="number" id="student-attendance" min="0" max="100" placeholder="0-100">
+                        </div>
+                    </div>
+                    <div id="student-form-error" class="error-msg"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeModal('student-modal')">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Info</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Batch CSV Import</h3>
+                <button class="close-btn" onclick="closeModal('import-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="import-help">Select one or multiple CSV files to import student data. Required columns:
+                    <code>name, email, grade, course</code> &bull; Optional: <code>section, phone, attendance</code>
+                </p>
+
+                <div class="upload-area" id="upload-dropzone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & Drop files here or click to browse</p>
+                    <input type="file" id="csv-file-input" multiple accept=".csv" class="hidden-input">
+                </div>
+
+                <div id="selected-files-list" class="files-list"></div>
+                <div id="import-progress" class="hidden">
+                    <p>Processing files in parallel...</p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="import-progress-bar"></div>
+                    </div>
+                </div>
+
+                <div id="import-results" class="import-results hidden"></div>
+
+                <div class="modal-footer mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('import-modal')">Close</button>
+                    <button type="button" class="btn btn-primary" id="start-import-btn" disabled>Start Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

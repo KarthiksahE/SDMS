@@ -43,9 +43,17 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/students', require('./routes/students'));
 
-// Serve frontend in deployed mode when frontend files exist in ../frontend
-const frontendDir = path.resolve(__dirname, '../frontend');
-const hasFrontendBuild = fs.existsSync(path.join(frontendDir, 'index.html'));
+// Resolve frontend location for both local dev and Azure deployment packages.
+const frontendCandidates = [
+    path.resolve(__dirname, 'public'),
+    path.resolve(__dirname, '../frontend')
+];
+
+const frontendDir = frontendCandidates.find((dir) =>
+    fs.existsSync(path.join(dir, 'index.html'))
+);
+
+const hasFrontendBuild = Boolean(frontendDir);
 
 if (hasFrontendBuild) {
     app.use(express.static(frontendDir));
@@ -60,6 +68,12 @@ if (hasFrontendBuild) {
 
     app.get('/student-dashboard', (req, res) => {
         res.sendFile(path.join(frontendDir, 'student-dashboard.html'));
+    });
+} else {
+    app.get('/', (req, res) => {
+        res.status(200).json({
+            message: 'API is running. Frontend files were not found in deployment package.'
+        });
     });
 }
 
