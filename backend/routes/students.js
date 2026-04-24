@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const multer = require('multer');
 const csvtojson = require('csvtojson');
 const { body, validationResult } = require('express-validator');
@@ -46,7 +47,13 @@ function isAdmin(user) {
 
 function getInstructorScope(user) {
     if (!user || isAdmin(user)) return {};
-    return { uploadedBy: user.id };
+
+    const ownerIds = [String(user.id)];
+    if (mongoose.Types.ObjectId.isValid(user.id)) {
+        ownerIds.push(new mongoose.Types.ObjectId(user.id));
+    }
+
+    return { uploadedBy: { $in: ownerIds } };
 }
 
 router.post('/import', auth, upload.array('files'), async (req, res) => {
@@ -210,9 +217,10 @@ router.get('/', auth, async (req, res) => {
 
         const query = conditions.length ? { $and: conditions } : {};
 
-        let studentsCursor = Student.collection
-            .find(query, { projection: { __v: 0 } })
-            .sort({ updatedAt: -1, createdAt: -1, _id: -1 });
+        let studentsCursor = Student.find(query)
+            .select('-__v')
+            .sort({ updatedAt: -1, createdAt: -1, _id: -1 })
+            .lean();
 
         // Apply pagination only when client explicitly requests it.
         const pageNum = Number(page);
@@ -223,7 +231,7 @@ router.get('/', auth, async (req, res) => {
                 .limit(limitNum);
         }
 
-        const students = await studentsCursor.toArray();
+        const students = await studentsCursor;
 
         res.json(students.map(normalizeStudentDoc));
 
